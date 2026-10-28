@@ -1,4 +1,4 @@
-# ADR-006: Validación de formularios con React Hook Form (R2, R5, R6, R7 y R10)
+# ADR-006: Validación de formularios con React Hook Form y esquemas Zod (R2, R5, R6, R7 y R10)
 
 ## Estado
 Aceptado.
@@ -10,7 +10,7 @@ Aceptado.
 R2 (validación del código del medidor), R5 (reglas según el estado del medidor), R6 y R7 (consumo anómalo, confirmación y foto condicional) y R10 (rechazo de duplicados y edición de lecturas pendientes).
 
 ## Contexto
-El registro debe validar el código con el formato `MED-` seguido de seis dígitos antes de consultar el sistema de oficina. Además, los campos requeridos dependen del estado: normal exige lectura; inaccesible exige motivo y deshabilita el campo de lectura; dañado exige descripción y admite lectura vacía. La anomalía se determina comparando la lectura actual con la anterior y el promedio mensual mediante funciones puras del dominio. Si el consumo supera tres veces el promedio, se exige confirmación del técnico y foto; un medidor dañado también requiere foto.
+El registro debe validar el código con el formato `MED-` seguido de seis dígitos antes de consultar el sistema de oficina. Además, los campos requeridos dependen del estado: normal exige lectura; inaccesible exige motivo y prohíbe registrar lectura; dañado exige descripción y admite lectura vacía. La anomalía se determina comparando la lectura actual con la anterior y el promedio mensual mediante funciones puras del dominio. Si el consumo supera tres veces el promedio, se exige confirmación del técnico y foto; un medidor dañado también requiere foto.
 
 El formulario abarca varias pantallas y sus datos deben persistirse como borrador para cumplir R8; esa recuperación corresponde al almacenamiento local (ADR-002, ADR-004) y no a la librería de validación. Asimismo, validar campos no basta para evitar un segundo registro del mismo medidor en el mismo mes ni para impedir editar una lectura ya enviada: esas reglas también necesitan controles de dominio sobre el estado de la cola.
 
@@ -18,35 +18,35 @@ El formulario abarca varias pantallas y sus datos deben persistirse como borrado
 
 | Alternativa | Ventajas en este proyecto | Desventajas en este proyecto |
 | :--- | :--- | :--- |
-| **React Hook Form con validaciones nativas (`register`, `rules`) — Elegida** | Mantiene reglas declarativas con pocos re-renderizados durante la captura, sin agregar una librería de esquemas adicional. | Las reglas condicionales deben manejarse con `watch` o `setValue`/`trigger` cuando el estado del medidor cambia. |
-| React Hook Form + Zod | Esquemas tipados y mensajes reutilizables. | Agrega `zod` y `@hookform/resolvers` como dependencias; la lógica de consumo y anomalía es de dominio, no de esquema. |
+| **React Hook Form + Zod (`@hookform/resolvers/zod`) — Elegida** | Permite expresar las tres variantes de R5 con `z.discriminatedUnion('estadoMedidor', ...)`, validar que la lectura no sea inferior a la anterior con `.refine(...)` y validar las condiciones de revisión de R6 y R7 en esquemas puros y probables sin abrir la interfaz. | Añade `zod` y `@hookform/resolvers` al proyecto, que deben mantenerse sincronizados con los tipos del dominio. |
+| React Hook Form con validaciones manuales en cada control | No agrega librería de esquemas. | Dispersa las reglas condicionales entre componentes de vista y dificulta probar las tres ramas de R5 fuera de las pantallas. |
 | Validaciones manuales con `useState` | No agrega dependencias de formularios. | Aumenta el código manual y acopla validaciones, estado y presentación. |
 
 ## Decisión
-Se decide implementar **React Hook Form** con sus validaciones nativas (`register` + objeto `rules`) para validar el formulario antes de guardar o avanzar entre pasos.
+Se decide implementar **React Hook Form** integrado con **Zod** mediante `zodResolver` para validar los formularios antes de consultar, avanzar entre pasos o guardar:
 
-Funciones puras del dominio calculan el consumo y determinan si es anómalo. Los controles de React Hook Form validan el formato del código (R2), las reglas por estado (R5) y las condiciones resultantes de R6 y R7: confirmación del técnico y foto obligatoria.
+1. **`esquemaCodigo` (R2):** Valida que el código recortado de espacios laterales cumpla `/^MED-\d{6}$/` antes de habilitar la consulta en TanStack Query.
+2. **`crearEsquemaPaso1(referencia)` (R5):** Usa `z.discriminatedUnion('estadoMedidor', ...)` para aplicar las reglas exactas de cada estado (`normal` exige número válido; `inaccesible` exige motivo y rechaza cualquier lectura con `.max(0)`; `danado` exige descripción de daño y admite lectura vacía o numérica) y un `.refine` que impide registrar una lectura menor que la lectura anterior conocida.
+3. **`esquemaRevision` (R6 y R7):** Valida las condiciones resultantes del cálculo puro del dominio (`anomalo` exige `revisionConfirmada === true`, y `fotoObligatoria` exige `fotoNombre != null`).
 
-El estado inaccesible deshabilita el campo de lectura para que no sea posible ingresarla; el estado dañado requiere descripción y admite lectura vacía. Si no existe una lectura anterior o un promedio conocido —por ejemplo, por trabajar offline sin ficha en caché— no se inventa el consumo ni se marca como verificada la anomalía: el registro queda pendiente de verificación.
+Funciones puras del dominio (`calcularConsumo`, `esAnomalo`, `fotoObligatoria`, `calcular`) calculan el consumo y determinan si es anómalo. Si no existe una lectura anterior o un promedio conocido —por ejemplo, por trabajar offline sin ficha en caché— no se inventa el consumo ni se marca como verificada la anomalía: el registro queda pendiente de verificación (R4).
 
-La validación de unicidad por medidor y mes se realiza en la acción de dominio que guarda la lectura, no únicamente en las reglas del formulario. Las lecturas pendientes pueden editarse; las enviadas se presentan como solo lectura. La persistencia del borrador para R8 se resuelve en Zustand/AsyncStorage (ADR-002 y ADR-004).
+La validación de unicidad por medidor y mes (R10) se realiza en la acción del store de lecturas (`agregar` y `corregir`), no únicamente en las reglas del formulario. Las lecturas pendientes pueden editarse; las enviadas se presentan como solo lectura.
 
 ## Consecuencias
 
-* Las reglas condicionales se definen junto a cada control y se muestran con mensajes en español junto al campo correspondiente.
-* Las reglas de dominio (duplicado por medidor/mes y estado enviado/no editable) se verifican también al cambiar el estado local, no solo al validar el formulario.
-* React Hook Form no persiste el formulario ni garantiza por sí solo unicidad remota; la protección remota depende del sistema de oficina.
-* Se utiliza `react-hook-form`, ya declarado en `package.json`. No se agregan `zod` ni `@hookform/resolvers`.
+* Los esquemas viven en `src/domain/esquemas.ts` con mensajes en español claros junto a cada control.
+* Las reglas de dominio (duplicado por medidor/mes y estado enviado/no editable) se verifican en `useLecturasStore` al guardar o corregir.
+* Se utilizan `react-hook-form`, `zod` y `@hookform/resolvers`, declarados en `package.json`.
 
 ## Verificación
 
 * Un código incompleto o distinto de `MED-` seguido de seis dígitos muestra error y no inicia una consulta.
-* Normal requiere una lectura; inaccesible requiere motivo y deshabilita el campo de lectura; dañado requiere descripción y permite lectura vacía.
-* El consumo lo calcula una función del dominio (lectura actual menos lectura anterior). Si supera tres veces el promedio, se muestra la advertencia y no se guarda hasta confirmar la revisión y adjuntar foto.
+* Normal requiere una lectura; inaccesible requiere motivo y rechaza lectura; dañado requiere descripción y permite lectura vacía.
+* El consumo lo calcula una función pura del dominio. Si supera tres veces el promedio, se muestra la advertencia y `esquemaRevision` impide guardar hasta confirmar la revisión y adjuntar foto.
 * Una foto es obligatoria para estado dañado y consumo anómalo, y opcional en los demás casos.
 * Se rechaza una segunda lectura del mismo medidor en el mismo mes; una lectura pendiente puede editarse y una enviada no.
-* El borrador y sus datos ingresados se restauran tras reiniciar la app conforme a R8, independientemente de la validación del formulario.
+* El borrador y sus datos ingresados se restauran tras reiniciar la app conforme a R8.
 
 ## Uso de IA
-Consulté a la IA sobre cómo mantener las validaciones del formulario organizadas y reutilizables. Elegí React Hook Form porque permite definir reglas directamente en cada control y mostrar mensajes claros sin concentrar toda la lógica en los componentes. Aclaré que el cálculo del consumo y la detección de anomalías son responsabilidades del dominio, no de la librería de formularios, y que la recuperación del borrador y la unicidad son controles adicionales que se resuelven en otras capas.
-
+Consulté a la IA sobre cómo organizar las reglas condicionales de los tres estados del medidor (R5) sin llenar las pantallas de condicionales. Elegí combinar **React Hook Form** con **Zod** (`discriminatedUnion`) porque concentra las reglas de R2, R5, R6 y R7 en `src/domain/esquemas.ts` y permite probarlas como funciones puras, manteniendo el cálculo de consumo en `src/domain/reglas.ts` y la unicidad por mes en el store de lecturas.

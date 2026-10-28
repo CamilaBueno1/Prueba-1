@@ -37,7 +37,7 @@ La cola, el borrador y la sesión pertenecen al estado persistido de Zustand/Asy
 
 * TanStack Query administra las peticiones y la caché de medidores; no sustituye la cola de lecturas offline.
 * AsyncStorage es el almacenamiento, pero la persistencia del QueryClient y la del store Zustand deben usar claves distintas.
-* Para configurar la persistencia requerida por R3, deben agregarse `@tanstack/react-query-persist-client` y `@tanstack/query-async-storage-persister`; actualmente no constan en `package.json`.
+* Para configurar la persistencia requerida por R3, se registran en `package.json` los paquetes `@tanstack/react-query-persist-client` y `@tanstack/query-async-storage-persister`.
 * Un fallo de red no debe borrar una ficha válida del caché ni presentarse como una respuesta exitosa del servidor.
 
 ## Verificación

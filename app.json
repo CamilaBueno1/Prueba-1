@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "Prueba",
-    "slug": "Prueba",
+    "name": "AquaRuta",
+    "slug": "aquaruta",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "prueba",
-    "userInterfaceStyle": "automatic",
+    "scheme": "aquaruta",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0E2A33",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -28,9 +28,15 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0E2A33",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "AquaRuta necesita acceso a la cámara para fotografiar el medidor como evidencia de campo."
         }
       ]
     ],

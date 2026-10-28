@@ -3,26 +3,24 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-import '@/global.css';
-
 import { Platform } from 'react-native';
 
-export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+const claro = {
+  text: '#0E2A33',
+  background: '#E9EEF0',
+  backgroundElement: '#FFFFFF',
+  backgroundSelected: '#D5E0E4',
+  textSecondary: '#4A6068',
+  acento: '#1F8FA8',
+  laton: '#C98A2B',
+  linea: '#BCCAD0',
+  ok: '#2E7D4F',
+  alerta: '#B45309',
+  error: '#B3261E',
 } as const;
+
+// Un solo tema (claro de alto contraste) a propósito: el técnico trabaja bajo luz solar directa (ADR-008)
+export const Colors = { light: claro, dark: claro } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 

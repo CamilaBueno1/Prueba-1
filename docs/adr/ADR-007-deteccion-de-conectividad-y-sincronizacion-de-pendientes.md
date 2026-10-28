@@ -27,24 +27,24 @@ Se decide implementar **`expo-network`** para observar cambios de conectividad y
 
 Toda lectura nace sin verificar. Si hay ficha en caché, el consumo se muestra de inmediato como referencia local, pero la lectura sigue pendiente de verificar hasta que, al enviarse, se compara con la lectura anterior de la oficina. Ante un fallo, el reintento usa espera creciente (5 s hasta un máximo de 60 s) y solo mientras haya pendientes; no hay consultas periódicas continuas. También se sincroniza al volver la app a primer plano y tras guardar una lectura.
 
-Cada lectura conserva un identificador estable (`clientId`) para relacionar los intentos. Antes de reintentar un envío de resultado incierto, la app puede consultar el recurso remoto por ese identificador y evitar repetir un registro que ya exista. Sin embargo, una consulta seguida de un `POST` no es una operación atómica: con MockAPI no se puede prometer ausencia absoluta de duplicados ante peticiones simultáneas o una respuesta perdida. La garantía completa requiere que el servicio de oficina aplique idempotencia o una restricción única por `clientId` y por medidor/mes.
+Cada lectura conserva un identificador estable (`idLocal`, UUID v4 generado al iniciar el borrador) para relacionar los intentos. Antes de reintentar un envío de resultado incierto, la app consulta el recurso remoto por ese identificador (`GET /lecturas?idLocal=...`) y evita repetir un registro que ya exista. Sin embargo, una consulta seguida de un `POST` no es una operación atómica: con MockAPI no se puede prometer ausencia absoluta de duplicados ante peticiones simultáneas o una respuesta perdida. La garantía completa requiere que el servicio de oficina aplique idempotencia o una restricción única por `idLocal` y por medidor/mes.
 
-Los errores se hacen visibles al técnico y no se transforman en confirmaciones de éxito.
+Los errores se hacen visibles al técnico (`ultimoError`) y no se transforman en confirmaciones de éxito.
 
 ## Consecuencias
 
 * El indicador de conexión y el contador de lecturas no enviadas se muestran en todas las pantallas y se derivan de estados locales observables.
 * La suscripción de red se libera al desmontar el servicio o componente que la registra.
 * Los intentos de sincronización deben tolerar fallos de red y reanudarse sin intervención manual, sin perder la lectura local.
-* `clientId` y la reconciliación remota reducen reenvíos duplicados, pero no sustituyen una garantía de idempotencia implementada por el servidor.
-* La app no marca como enviada una lectura hasta que exista confirmación válida del servicio. La foto no se elimina (ADR-005). El último error de envío se guarda y se muestra al técnico.
+* `idLocal` y la reconciliación remota reducen reenvíos duplicados, pero no sustituyen una garantía de idempotencia implementada por el servidor.
+* La app no marca como enviada una lectura hasta que exista confirmación válida del servicio. La foto no se elimina (ADR-005). El último error de envío (`ultimoError`) se guarda y se muestra al técnico.
 
 ## Verificación
 
 * El indicador cambia al activar o desactivar el modo avión y el contador muestra las lecturas no enviadas en todas las pantallas.
 * En modo avión se puede guardar una lectura y queda marcada como pendiente de verificar hasta que se compara con la lectura anterior de la oficina.
 * Al recuperar conectividad, los registros pendientes comienzan a sincronizarse automáticamente; si falla un envío, el registro permanece local y se reintenta sin indicar éxito.
-* Si se pierde la respuesta de un envío, la app intenta reconciliar por `clientId` antes de reenviar; la documentación reconoce la limitación de idempotencia de MockAPI.
+* Si se pierde la respuesta de un envío, la app intenta reconciliar por `idLocal` antes de reenviar; la documentación reconoce la limitación de idempotencia de MockAPI.
 * Las lecturas pendientes pueden corregirse; las confirmadas como enviadas no se editan.
 * La app rechaza localmente una segunda lectura del mismo medidor en el mismo mes. La garantía remota requiere soporte del servicio.
 

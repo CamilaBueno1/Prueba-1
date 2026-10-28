@@ -23,7 +23,7 @@ Un ADR (*Architecture Decision Record*) documenta una decisión de diseño o tec
 | 003 | [ADR-003-consulta-de-medidores-tanstack-query.md](./ADR-003-consulta-de-medidores-tanstack-query.md) | Usar **TanStack Query** para consultar los medidores | Aceptado | 27/10/2026 |
 | 004 | [ADR-004-estado-global-zustand.md](./ADR-004-estado-global-zustand.md) | Gestión de estado global con **Zustand** para sesión, borradores y pendientes | Aceptado | 27/10/2026 |
 | 005 | [ADR-005-captura-de-evidencias-fotograficas-y-gestion-de-archivos.md](./ADR-005-captura-de-evidencias-fotograficas-y-gestion-de-archivos.md) | Captura de evidencias fotográficas con **expo-image-picker** y **expo-file-system** | Aceptado | 27/10/2026 |
-| 006 | [ADR-006-validacion-de-formularios-con-react-hook-form.md](./ADR-006-validacion-de-formularios-con-react-hook-form.md) | Validación de formularios con **React Hook Form** (sin Zod) | Aceptado | 27/10/2026 |
+| 006 | [ADR-006-validacion-de-formularios-con-react-hook-form.md](./ADR-006-validacion-de-formularios-con-react-hook-form.md) | Validación de formularios con **React Hook Form** y **Zod** | Aceptado | 27/10/2026 |
 | 007 | [ADR-007-deteccion-de-conectividad-y-sincronizacion-de-pendientes.md](./ADR-007-deteccion-de-conectividad-y-sincronizacion-de-pendientes.md) | Detección de conectividad con **expo-network** y cola persistida en Zustand | Aceptado | 27/10/2026 |
 | 008 | [ADR-008-identidad-visual-y-uso-en-campo.md](./ADR-008-identidad-visual-y-uso-en-campo.md) | Sistema visual propio con componentes nativos para uso en campo | Aceptado | 27/10/2026 |
 
@@ -52,7 +52,7 @@ ADR-004 (Zustand)
 ADR-005 (Fotos)
     └── guarda fotoNombre en el store de ADR-004 (Zustand)
 
-ADR-006 (React Hook Form)
+ADR-006 (React Hook Form + Zod)
     ├── lee ficha de ADR-003 (TanStack Query)
     └── guarda borrador en ADR-004 (Zustand)
 
@@ -76,7 +76,7 @@ ADR-008 (Identidad visual)
 | Zustand | `zustand` | Estado global reactivo + persist de sesión/borrador/cola |
 | TanStack Query | `@tanstack/react-query` | Consultas, caché y estado de carga de medidores |
 | TanStack Persisters | `@tanstack/react-query-persist-client` + `@tanstack/query-async-storage-persister` | Persistencia del QueryClient en AsyncStorage |
-| React Hook Form | `react-hook-form` | Validación declarativa de formularios (sin Zod) |
+| React Hook Form + Zod | `react-hook-form` + `zod` + `@hookform/resolvers` | Validación declarativa de formularios y esquemas discriminados por estado |
 | expo-image-picker | `expo-image-picker` | Captura de fotos desde la cámara |
 | expo-file-system | `expo-file-system` | Copia de fotos al directorio persistente de la app |
 | expo-network | `expo-network` | Detección de cambios de conectividad |
