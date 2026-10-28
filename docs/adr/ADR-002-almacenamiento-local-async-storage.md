@@ -7,36 +7,34 @@ Aceptado.
 27 de octubre de 2026.
 
 ## Requisitos relacionados
-R1 (Persistencia de sesión del empleado), R3 (Caché de medidores consultados para uso sin señal), R4 (Lecturas pendientes en modo avión), R7 (Conservación de fotos y registros locales) y R8 (Recuperación de borradores ante cierres imprevistos).
+R1 (persistencia de sesión del empleado), R3 (caché de medidores consultados para uso sin señal), R4 (lecturas pendientes en modo avión), R7 (conservación de fotos y registros locales), R8 (recuperación de borradores), R9 (cola de sincronización) y R10 (control local de duplicados y edición de pendientes).
 
 ## Contexto
-Los técnicos de EPMAPS realizan levantamientos en zonas rurales de Quito (como Nono, Lloa o Calacalí) y en sótanos donde la señal celular es débil o nula. Para cumplir con los requisitos, la aplicación necesita guardar de forma local información clave: la sesión activa del empleado (R1), la caché de los medidores consultados con sus datos para no requerir internet en una segunda visita (R3), el borrador del formulario multi-pantalla por si la app se cierra a mitad de un registro (R8), y la cola de lecturas pendientes junto con sus fotos (R4, R7). Dado que el volumen de datos del aplicativo es acotado y se maneja con información simulada/quemada para el alcance de la prueba, se requiere una solución ligera, rápida y directa que permita persistir esta información en formato clave-valor sin incurrir en sobreingeniería ni en la complejidad innecesaria de un motor de base de datos relacional.
+Los técnicos de EPMAPS realizan levantamientos en zonas rurales de Quito (como Nono, Lloa o Calacalí) y en sótanos donde la señal celular es débil o nula. La aplicación necesita persistir la sesión del empleado (R1), el borrador del formulario multipantalla (R8) y la cola e historial de lecturas junto con la referencia local de sus fotos (R4, R7, R9 y R10). El volumen de datos de esta prueba es acotado y se maneja con información simulada; se busca una solución ligera de clave-valor que el equipo pueda explicar y mantener, sin añadir un motor relacional que no se ha trabajado en clase.
 
 ## Alternativas consideradas
 
 | Alternativa | Ventajas en este proyecto | Desventajas en este proyecto |
 | :--- | :--- | :--- |
-| **AsyncStorage (`@react-native-async-storage/async-storage`)** | Es una solución nativa asíncrona muy sencilla y directa para almacenar objetos eNo requiere configuración nativa ni compilaciones binarias complejas en Expo SDK 57, garantizando compatibilidad total inmediata con Expo Go y compilaciones de APK, acelera el tiempo de desarrollo, evita recargar el código con sentencias SQL complejas y se integra de inmediato. | Al ser un almacenamiento plano de tipo clave-valor, no permite hacer consultas estructuradas avanzadas (como `JOINs`). Si la lista de datos creciera a escala industrial, requeriría lógica manual en JavaScript para filtrar o actualizar bloques completos. |
-| **SQLite (`expo-sqlite`)** | Permite organizar la información en tablas relacionales y realizar consultas estructuradas. | Introduce una capa de complejidad innecesaria (sobreingeniería) para el volumen de datos y el alcance actual de la aplicación, obligando a configurar tablas y sentencias SQL incrementando una complejidad innecesaria. |
-| **Archivos planos (`expo-file-system`)** | Permite guardar archivos JSON directamente en el almacenamiento interno. | Requiere gestionar manualmente la lectura y escritura de archivos del sistema, lo que resulta más propenso a errores y código repetitivo. |
+| **AsyncStorage (`@react-native-async-storage/async-storage`)** | Es una solución asíncrona sencilla para almacenar objetos pequeños; evita configurar tablas y sentencias SQL y ya forma parte de las dependencias del proyecto. | Al ser clave-valor, no permite consultas estructuradas ni transacciones. La aplicación debe centralizar las escrituras y validar la unicidad en su lógica. |
+| **SQLite (`expo-sqlite`)** | Permite organizar la información en tablas y realizar consultas transaccionales. | Añade un esquema, sentencias SQL y mantenimiento que no se justifican por el volumen acotado ni por los conocimientos requeridos para esta prueba. |
+| **Archivos planos (`expo-file-system`)** | Permite guardar archivos JSON directamente en el almacenamiento interno. | Requiere gestionar manualmente lecturas, escrituras y concurrencia del archivo, y no aporta una ventaja suficiente frente a AsyncStorage para estos datos pequeños. |
 
 ## Decisión
-Se decide utilizar **AsyncStorage**, porque para el alcance actual del aplicativo (que maneja un volumen de datos acotado y controlado). Su modelo clave-valor cubre el 100% de los requerimientos del proyecto mediante claves estructuradas:
-- `@auth_session`: credenciales y datos del técnico logueado.
-- `@medidores_cache`: diccionario de medidores consultados indexados por su código (`MED-XXXXXX`).
-- `@pending_readings`: cola de lecturas pendientes de verificación y envío.
-- `@sent_readings`: registro histórico de lecturas enviadas para control de duplicidad en el mes.
-- `@draft_reading`: estado y paso actual del formulario en progreso para recuperación de R8.
+Se decide utilizar **AsyncStorage** para el estado local de campo, con **Zustand y su middleware `persist`** para serializar los datos seleccionados bajo una clave propia y versionada. Se persiste el código del técnico, nunca su clave; el borrador activo; y la cola e historial de lecturas con estado, identificador estable y mes de registro. Las escrituras se centralizan en acciones para comprobar el estado actual y evitar modificaciones solapadas.
+
+El caché de medidores pertenece a **TanStack Query** y se persiste por separado en AsyncStorage mediante sus adaptadores de persistencia, como se define en ADR-003. No se guarda una segunda copia de las fichas en el store Zustand. Las fotos se guardan como archivos en el directorio privado del dispositivo; el estado local conserva únicamente su URI, no la imagen codificada en Base64.
 
 ## Consecuencias
-* Se logra implementar la persistencia de forma ágil y eficiente utilizando una librería conocida y compatibilidad comprobada.
-* **Riesgos y desventajas:** Dado que todas las operaciones son asíncronas (`Promise<T>`), cualquier lectura de almacenamiento debe controlarse con estados de carga (`loading`) para evitar condiciones de carrera donde la interfaz intente acceder a datos antes de que se completen las lecturas del disco.
-* Exige estructurar correctamente las llaves (*keys*) de almacenamiento (por ejemplo, separando la sesión, la caché y los borradores) para evitar colisiones de datos, ademas de que deben serializarse/deserializarse mediante `JSON.stringify` y `JSON.parse` con manejo de errores `try/catch`.
+* Se persiste de manera sencilla la cantidad acotada de datos requerida por el flujo de campo.
+* **Riesgos y desventajas:** AsyncStorage no ofrece transacciones ni restricciones únicas. La aplicación centraliza y serializa las mutaciones, y comprueba el duplicado de medidor/mes antes de guardar. La comprobación local cubre el uso de un técnico en un dispositivo; la prevención de duplicados remotos y reintentos necesita cooperación del servicio de oficina.
+* Las claves de Zustand y del persister de TanStack Query deben ser distintas y versionadas. Al ser asíncrona la hidratación, las pantallas que dependen de sesión, borrador o consultas deben esperar a que finalice. Los errores de lectura o escritura se deben mostrar, no tratar como éxito.
 
 ## Verificación
-* En el archivo `package.json` se encuentra registrada la dependencia de AsyncStorage.
-* En el código fuente existen servicios o funciones dedicadas a guardar y recuperar la sesión, los medidores y las lecturas usando `getItem` y `setItem`.
-* En el dispositivo o emulador, al activar el modo avión, registrar una lectura, cerrar la app y volver a abrirla, los datos persisten correctamente sin perderse.
+* **Criterio para la implementación:** AsyncStorage debe estar registrado en `package.json`; el código debe conectar Zustand y el persister de TanStack Query usando claves distintas. La persistencia del persister aún requiere agregar las dependencias indicadas en ADR-003.
+* Al cerrar y abrir la app, la sesión, el borrador y la cola se restauran; el caché de fichas se restaura desde el QueryClient persistido.
+* En modo avión se puede guardar una lectura y, tras reiniciar la aplicación, siguen disponibles sus datos y la foto local.
+* Una lectura del mismo medidor en el mismo mes se rechaza localmente tanto si la anterior está pendiente como si ya fue enviada.
 
 ## Uso de IA
-Se evaluaron diferentes alternativas de persistencia offline (como SQLite y AsyncStorage). **Se eligió AsyncStorage** descartando SQLite porque, dado que el aplicativo es pequeño y contiene datos acotados, utilizar un motor de base de datos relacional habría representado una sobreingeniería innecesaria, recargando el código con sentencias SQL que no se justifican para este nivel de datos.
+Consulté a la IA sobre alternativas para persistir datos sin conexión, entre ellas SQLite y AsyncStorage. Elegí **AsyncStorage** porque el volumen de datos de esta prueba es acotado y su modelo clave-valor resulta suficiente para la sesión, el borrador y la cola local. Las fichas consultadas también se conservan en AsyncStorage, pero mediante el persister de TanStack Query y con una clave separada; no se duplican en Zustand. Para este alcance, SQLite añadiría el aprendizaje y mantenimiento de tablas y consultas SQL sin una necesidad que lo justifique.

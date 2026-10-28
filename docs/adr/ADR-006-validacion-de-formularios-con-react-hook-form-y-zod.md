@@ -1,4 +1,4 @@
-# ADR-006: Validación de formularios con React Hook Form y Zod (R2 y R8)
+# ADR-006: Validación de formularios con React Hook Form y Zod (R2, R5, R6, R7 y R10)
 
 ## Estado
 Aceptado.
@@ -7,36 +7,43 @@ Aceptado.
 27 de octubre de 2026.
 
 ## Requisitos relacionados
-R2 (Captura de lectura con datos obligatorios) y R8 (Validación en tiempo real y prevención de errores).
+R2 (validación del código del medidor), R5 (reglas según el estado del medidor), R6 y R7 (consumo anómalo, confirmación y foto condicional) y R10 (rechazo de duplicados y edición de lecturas pendientes).
 
 ## Contexto
-El registro de lecturas de medidores por parte del técnico de EPMAPS exige validar campos obligatorios (código de medidor, lectura numéricamente coherente y evidencia fotográfica) antes de permitir el guardado local en la cola de pendientes o su envío a la API. 
+El registro debe validar el código con el formato `MED-` seguido de seis dígitos antes de consultar el sistema de oficina. Además, los campos requeridos dependen del estado: normal exige lectura; inaccesible exige motivo y no admite lectura; dañado exige descripción y permite dejar la lectura vacía. La anomalía se determina comparando la lectura actual con la anterior y el promedio mensual. Si el consumo supera tres veces el promedio, se exige confirmación del técnico y foto; un medidor dañado también requiere foto.
 
-Manejar las validaciones directamente con estados de React (`useState`) genera código extenso, re-renderizados innecesarios por cada pulsación de tecla y acoplamiento entre la lógica de validación y la interfaz. Se requiere un esquema de validación declarativo, con tipado estático estricto y alto rendimiento visual.
+El formulario abarca varias pantallas y sus datos deben persistirse como borrador para cumplir R8; esa recuperación corresponde al almacenamiento local y no a la librería de validación. Asimismo, validar campos no basta para evitar un segundo registro del mismo medidor en el mismo mes ni para impedir editar una lectura ya enviada: esas reglas también necesitan controles de dominio sobre el estado de la cola.
 
 ## Alternativas consideradas
 
 | Alternativa | Ventajas en este proyecto | Desventajas en este proyecto |
 | :--- | :--- | :--- |
-| **React Hook Form + Zod (`@hookform/resolvers/zod`) (Elegida)** | Minimiza los re-renderizados al capturar valores de forma no controlada. Zod separa las reglas de negocio en un esquema tipado reutilizable que infiere los tipos de TypeScript automáticamente. | Requiere integrar la librería de esquemas Zod y el conector de resolvers al proyecto. |
-| **Validación interna de React Hook Form (sin Zod)** | No requiere librerías de esquemas adicionales. | Acopla los mensajes y reglas de validación directamente dentro del código JSX de la pantalla, dificultando su reutilización y tipado dinámico. |
-| **Validaciones manuales con `useState`** | Totalmente nativo en React sin dependencias externas. | Re-renderiza la pantalla entera con cada carácter escrito, generando ralentizaciones en dispositivos móviles de gama media. |
+| **React Hook Form + Zod (`@hookform/resolvers/zod`) (Elegida)** | Mantiene reglas declarativas y tipadas, con mensajes reutilizables y pocos re-renderizados durante la captura. | Requiere integrar la librería de esquemas y su resolver. |
+| Validación interna de React Hook Form | No requiere una librería de esquemas adicional. | Las reglas y mensajes se dispersan entre los componentes del formulario. |
+| Validaciones manuales con `useState` | No agrega dependencias de formularios. | Aumenta el código manual y acopla validaciones, estado y presentación. |
 
 ## Decisión
-Se decide implementar **React Hook Form en conjunto con Zod** para la gestión de formularios y validaciones. Zod centraliza las reglas de negocio (ej. campos requeridos, valores numéricos mayores a cero) mediante un esquema tipado, mientras que React Hook Form gestiona el estado y ciclo de vida del formulario en la interfaz con el mínimo impacto en la memoria RAM.
+Se decide implementar **React Hook Form en conjunto con Zod** para validar el formulario antes de guardar o avanzar entre pasos. El esquema aplica las reglas condicionales de R5, valida el formato del código de R2 y aplica los requisitos de R6 y R7: calcula el consumo como lectura actual menos lectura anterior, lo compara con el promedio mensual, exige confirmación cuando supera tres veces ese promedio y exige la foto en casos anómalos o de medidor dañado.
+
+El estado inaccesible debe rechazar cualquier lectura ingresada; el estado dañado requiere descripción y admite lectura vacía. Si no existe una lectura anterior o un promedio conocido —por ejemplo, por trabajar offline sin ficha en caché— no se inventa el consumo ni se marca como verificada la anomalía: el registro queda pendiente de verificación.
+
+La validación de unicidad por medidor y mes se realiza en la acción de dominio que guarda la lectura, no únicamente en el esquema del formulario. Las lecturas pendientes pueden editarse; las enviadas se presentan como solo lectura. La persistencia del borrador para R8 se resuelve en Zustand/AsyncStorage, según ADR-002 y ADR-004.
 
 ## Consecuencias
 
-* Garantiza que los datos validados coincidan exactamente con la estructura de tipos esperada por la cola de Zustand sin acoplar lógica en las vistas.
-* Requiere definir formalmente el esquema de Zod (`z.object({...})`) antes de vincular los componentes de entrada (*inputs*).
-*Introduce `react-hook-form`, `zod` y `@hookform/resolvers` en el archivo de configuración `package.json`.
-
-* **Control requerido:** Es indispensable personalizar los mensajes de validación de Zod en español para que los errores mostrados en pantalla sean claros para el técnico de campo.
+* Las reglas condicionales se definen en un esquema tipado y se muestran con mensajes en español junto al campo correspondiente.
+* Las reglas de dominio (duplicado por medidor/mes y estado enviado/no editable) se verifican también al cambiar el estado local, no solo al validar el formulario.
+* Zod no persiste el formulario ni garantiza por sí solo unicidad remota; la protección remota depende del sistema de oficina.
+* Se utilizan `react-hook-form`, `zod` y `@hookform/resolvers`, ya declarados en `package.json`.
 
 ## Verificación
-* Las librerías `react-hook-form`, `zod` y `@hookform/resolvers` constan en el archivo `package.json`.
-* Al intentar guardar una lectura sin código o con valor negativo, el formulario bloquea el evento de guardado y resalta los campos con error.
-* El objeto con la lectura solo se transfiere al *store* de Zustand cuando el esquema de Zod retorna una validación limpia.
+
+* Un código incompleto o distinto de `MED-` seguido de seis dígitos muestra error y no inicia una consulta.
+* Normal requiere una lectura; inaccesible requiere motivo y no permite lectura; dañado requiere descripción y permite lectura vacía.
+* El consumo se calcula como lectura actual menos lectura anterior. Si supera tres veces el promedio, se muestra la advertencia y no se guarda hasta confirmar la revisión y adjuntar foto.
+* Una foto es obligatoria para estado dañado y consumo anómalo, y opcional en los demás casos.
+* Se rechaza una segunda lectura del mismo medidor en el mismo mes; una lectura pendiente puede editarse y una enviada no.
+* El borrador y sus datos ingresados se restauran tras reiniciar la app conforme a R8, independientemente de la validación del formulario.
 
 ## Uso de IA
-Se evaluó usar validaciones nativas de React Hook Form o estados locales. Se eligió React Hook Form + Zod por la solidez del tipado estático automático con TypeScript, la reutilización de esquemas de validación y la prevención de renderizados innecesarios.
+Consulté a la IA sobre cómo mantener las validaciones del formulario organizadas y reutilizables. Elegí React Hook Form junto con Zod porque permite definir reglas en esquemas tipados y mostrar mensajes claros sin concentrar toda la lógica en los componentes. Aclaré que las reglas cambian según el estado del medidor y que la recuperación del borrador y la unicidad son responsabilidades adicionales, no funciones que Zod resuelva por sí solo.
