@@ -1,38 +1,29 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
 const claro = {
-  text: '#0E2A33',
-  background: '#E9EEF0',
-  backgroundElement: '#FFFFFF',
-  backgroundSelected: '#D5E0E4',
-  textSecondary: '#4A6068',
-  acento: '#1F8FA8',
-  laton: '#C98A2B',
-  linea: '#BCCAD0',
-  ok: '#2E7D4F',
-  alerta: '#B45309',
-  error: '#B3261E',
+  text: '#0A2540',               // Azul marino corporativo para lectura nítida
+  background: '#F3F6FA',         // Gris-azulado suave empresarial
+  backgroundElement: '#FFFFFF',  // Blanco puro para tarjetas y paneles
+  backgroundSelected: '#E6F0FA', // Azul claro suave para selección activa
+  textSecondary: '#52667A',      // Gris pizarra medio para subtítulos
+  acento: '#00549F',             // Azul institucional EPMAPS Agua de Quito
+  laton: '#00549F',              // Acción principal unificada en azul corporativo EPMAPS
+  rojoQuito: '#E1251B',          // Rojo institucional del logotipo EPMAPS / Quito
+  linea: '#DCE4EE',              // Borde suave de tarjetas y divisores
+  ok: '#15803D',                 // Verde corporativo de confirmación
+  alerta: '#D97706',             // Ámbar de advertencia / pendiente
+  error: '#DC2626',              // Rojo de error / anomalía
 } as const;
 
-// Un solo tema (claro de alto contraste) a propósito: el técnico trabaja bajo luz solar directa (ADR-008)
 export const Colors = { light: claro, dark: claro } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

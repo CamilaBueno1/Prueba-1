@@ -7,31 +7,28 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { BannerRed } from '@/components/BannerRed';
 import { persistOptions, queryClient } from '@/config/queryClient';
 import { c } from '@/constants/estilos';
-import { Fonts } from '@/constants/theme';
 import { useHidratacion } from '@/hooks/useHidratacion';
 import { useVigilarRed } from '@/hooks/useVigilarRed';
 import { iniciarSincronizacion } from '@/services/sincronizacion';
 import { useSesionStore } from '@/store/sesion';
 
 function Contenido() {
-  const hidratado = useHidratacion();   // Zustand leyó el disco
-  const restaurando = useIsRestoring(); // TanStack leyó su caché del disco
+  const hidratado = useHidratacion();
+  const restaurando = useIsRestoring();
   const tecnico = useSesionStore((s) => s.tecnico);
 
   useVigilarRed();
 
-  // La sincronización arranca SOLO cuando la cola ya se cargó del disco
   useEffect(() => {
     if (!hidratado) return;
     return iniciarSincronizacion();
   }, [hidratado]);
 
-  // ADR-001: no se navega hasta tener los datos guardados (si no, el registro pendiente "no existe")
   if (!hidratado || restaurando) {
     return (
       <View style={s.carga}>
-        <ActivityIndicator color={c.laton} size="large" />
-        <Text style={s.cargaTxt}>RESTAURANDO DATOS DE CAMPO…</Text>
+        <ActivityIndicator color={c.acento} size="large" />
+        <Text style={s.cargaTxt}>Cargando aplicación…</Text>
       </View>
     );
   }
@@ -39,13 +36,12 @@ function Contenido() {
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
       <StatusBar style="light" />
-      {/* El banner está FUERA del Stack: aparece en todas las pantallas, incluido el login (R9) */}
       <BannerRed />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: c.backgroundElement },
           headerTintColor: c.text,
-          headerTitleStyle: { fontWeight: '800', fontSize: 16 },
+          headerTitleStyle: { fontWeight: '700', fontSize: 17 },
           headerShadowVisible: false,
         }}>
         <Stack.Protected guard={!tecnico}>
@@ -55,11 +51,11 @@ function Contenido() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="registro/estado"
-            options={{ title: 'Registrar lectura · Paso 1 de 2' }}
+            options={{ title: 'Registrar lectura (Paso 1 de 2)' }}
           />
           <Stack.Screen
             name="registro/revision"
-            options={{ title: 'Revisión y evidencia · Paso 2 de 2' }}
+            options={{ title: 'Confirmar lectura (Paso 2 de 2)' }}
           />
         </Stack.Protected>
       </Stack>
@@ -78,16 +74,14 @@ export default function Raiz() {
 const s = StyleSheet.create({
   carga: {
     flex: 1,
-    backgroundColor: c.text,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   cargaTxt: {
-    color: '#FFFFFF',
-    fontFamily: Fonts.mono,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
+    color: c.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -6,7 +6,7 @@ export function Odometro({ valor }: { valor: number | null }) {
   if (valor == null) {
     return (
       <View style={s.sinDatoCaja}>
-        <Text style={ui.etiqueta}>SIN REGISTRO NUMÉRICO EN SISTEMA</Text>
+        <Text style={ui.etiquetaSecundaria}>Sin lectura registrada</Text>
       </View>
     );
   }
@@ -29,7 +29,7 @@ export function Odometro({ valor }: { valor: number | null }) {
             </View>
           </>
         )}
-        <View style={s.unidadCaja}>
+        <View style={s.unidadBadge}>
           <Text style={s.unidad}>m³</Text>
         </View>
       </View>
@@ -39,53 +39,55 @@ export function Odometro({ valor }: { valor: number | null }) {
 
 const s = StyleSheet.create({
   marco: {
-    backgroundColor: '#F3F6F8',
-    borderWidth: 1.5,
-    borderColor: c.linea,
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    backgroundColor: '#F0F6FC',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     alignSelf: 'flex-start',
   },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   digito: {
-    width: 26,
-    height: 36,
-    borderRadius: 3,
-    backgroundColor: c.text,
-    borderBottomWidth: 2,
-    borderBottomColor: '#061318',
+    width: 28,
+    height: 38,
+    borderRadius: 6,
+    backgroundColor: '#0A2540',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
   decimal: {
-    backgroundColor: c.error,
-    borderBottomColor: '#7A1712',
+    backgroundColor: c.rojoQuito,
     width: 36,
   },
   coma: {
-    fontFamily: Fonts.mono,
     fontSize: 18,
     fontWeight: '800',
-    color: c.error,
-    marginHorizontal: 1,
+    color: c.rojoQuito,
   },
-  txt: { color: '#F4E9D0', fontFamily: Fonts.mono, fontSize: 18, fontWeight: '800' },
-  unidadCaja: {
+  txt: { color: '#FFFFFF', fontFamily: Fonts.mono, fontSize: 17, fontWeight: '700' },
+  unidadBadge: {
     marginLeft: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    backgroundColor: c.backgroundSelected,
-    borderRadius: 4,
+    backgroundColor: c.acento,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
-  unidad: { fontFamily: Fonts.mono, fontSize: 12, fontWeight: '800', color: c.text },
+  unidad: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
   sinDatoCaja: {
     paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: c.background,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: c.linea,
+    paddingHorizontal: 12,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
 });

@@ -1,6 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { RADIO, c } from '@/constants/estilos';
-import { Fonts } from '@/constants/theme';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { c } from '@/constants/estilos';
 
 type Props = {
   titulo: string;
@@ -18,14 +17,8 @@ export function Boton({
   deshabilitado = false,
 }: Props) {
   const apagado = deshabilitado || cargando;
-  const txt =
-    tipo === 'primario'
-      ? '#FFFFFF'
-      : tipo === 'laton'
-        ? '#0E2A33'
-        : tipo === 'peligro'
-          ? c.error
-          : c.text;
+  const esSolido = tipo === 'primario' || tipo === 'laton';
+  const txt = esSolido ? '#FFFFFF' : tipo === 'peligro' ? c.error : c.acento;
 
   return (
     <Pressable
@@ -36,13 +29,16 @@ export function Boton({
       style={({ pressed }) => [
         s.base,
         s[tipo],
-        apagado && { opacity: 0.42 },
-        pressed && !apagado && { transform: [{ translateY: 1 }], opacity: 0.92 },
+        esSolido && !apagado && s.sombraSolida,
+        apagado && { opacity: 0.45 },
+        pressed && !apagado && { opacity: 0.9, transform: [{ scale: 0.99 }] },
       ]}>
       {cargando ? (
         <ActivityIndicator color={txt} />
       ) : (
-        <Text style={[s.txt, { color: txt }]}>{titulo}</Text>
+        <View style={s.fila}>
+          <Text style={[s.txt, { color: txt }]}>{titulo}</Text>
+        </View>
       )}
     </Pressable>
   );
@@ -50,21 +46,44 @@ export function Boton({
 
 const s = StyleSheet.create({
   base: {
-    minHeight: 50,
-    borderRadius: RADIO,
-    paddingHorizontal: 18,
+    minHeight: 52,
+    borderRadius: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  txt: {
-    fontFamily: Fonts.mono,
-    fontWeight: '800',
-    fontSize: 14,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+  fila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  primario: { backgroundColor: c.text, borderWidth: 1.5, borderColor: c.text },
-  laton: { backgroundColor: c.laton, borderWidth: 1.5, borderColor: '#A66E18' },
-  borde: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: c.text },
-  peligro: { backgroundColor: '#FFF5F5', borderWidth: 1.5, borderColor: c.error },
+  txt: {
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 0.2,
+  },
+  primario: {
+    backgroundColor: c.acento,
+  },
+  laton: {
+    backgroundColor: c.acento,
+  },
+  sombraSolida: {
+    shadowColor: c.acento,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  borde: {
+    backgroundColor: '#F0F6FC',
+    borderWidth: 1.5,
+    borderColor: c.acento,
+  },
+  peligro: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+  },
 });

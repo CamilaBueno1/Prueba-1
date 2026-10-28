@@ -5,7 +5,6 @@ import { Boton } from '@/components/Boton';
 import { Odometro } from '@/components/Odometro';
 import { SeccionFoto } from '@/components/SeccionFoto';
 import { c, ui } from '@/constants/estilos';
-import { Fonts } from '@/constants/theme';
 import { crearEsquemaPaso1, esquemaRevision } from '@/domain/esquemas';
 import { lecturaDeBorrador } from '@/domain/fabrica';
 import { m3 } from '@/domain/formato';
@@ -38,7 +37,6 @@ export default function PasoRevision() {
     descripcionDano: b.descripcionDano,
   }).success;
 
-  // R6 y R7 se validan con Zod (ADR-006)
   const revision = esquemaRevision.safeParse({
     anomalo: calculo.anomalo,
     fotoObligatoria: calculo.fotoObligatoria,
@@ -46,7 +44,7 @@ export default function PasoRevision() {
     fotoNombre: b.fotoNombre,
   });
   const falta: string[] = [];
-  if (!paso1Valido) falta.push('Completa los datos del paso 1.');
+  if (!paso1Valido) falta.push('Completa los datos del paso anterior.');
   if (!revision.success) falta.push(...revision.error.issues.map((i) => i.message));
 
   const guardar = () => {
@@ -56,84 +54,112 @@ export default function PasoRevision() {
     const store = useLecturasStore.getState();
 
     if (b.modo === 'nuevo') {
-      const r = store.agregar(fila); // R10: rechaza el duplicado del mes
+      const r = store.agregar(fila);
       if (!r.ok) {
         setError(r.razon);
         return;
       }
     } else if (!store.corregir(fila)) {
-      // R10: solo se corrige si sigue pendiente
-      setError('Esta lectura ya fue enviada (o se está enviando) y no se puede corregir.');
+      setError('Esta lectura ya fue enviada y no se puede modificar.');
       return;
     }
-    descartar(); // el borrador ya cumplió su función
-    void sincronizar(); // si hay señal, sale ahora mismo
+    descartar();
+    void sincronizar();
     router.dismissAll();
     router.navigate('/lecturas');
   };
 
   return (
     <ScrollView style={ui.pantalla} contentContainerStyle={ui.contenido}>
-      <View style={ui.panel}>
-        <View style={ui.panelCabecera}>
-          <View>
-            <Text style={ui.etiqueta}>Balance hidrométrico · {b.codigo}</Text>
-            <Text style={s.estadoTag}>
-              ESTADO: {b.estadoMedidor === 'danado' ? 'DAÑADO' : b.estadoMedidor.toUpperCase()}
-            </Text>
+      {/* Barra de Progreso de 2 Pasos (Paso 2 activo) */}
+      <View style={s.barraPasos}>
+        <View style={s.pasoItem}>
+          <View style={[s.circuloPaso, s.circuloCompletado]}>
+            <Text style={s.numPasoActivo}>1</Text>
           </View>
-          <Text style={[ui.sello, { color: c.acento, borderColor: c.acento }]}>PASO 2 DE 2</Text>
+          <Text style={s.txtPasoInactivo}>Estado y lectura</Text>
         </View>
-
-        <Text style={ui.etiqueta}>Lectura anterior</Text>
-        <Odometro valor={b.referencia.lecturaAnterior} />
-
-        <Text style={ui.etiqueta}>Lectura actual capturada</Text>
-        <Odometro valor={calculo.lectura} />
-
-        <View style={s.separador} />
-
-        <View style={s.fila}>
-          <Text style={ui.etiqueta}>Consumo calculado del mes</Text>
-          <Text style={[s.valor, calculo.anomalo && { color: c.error }]}>
-            {m3(calculo.consumo)}
-          </Text>
-        </View>
-        <View style={s.fila}>
-          <Text style={ui.etiqueta}>Promedio histórico mensual</Text>
-          <Text style={s.valor}>{m3(b.referencia.promedio)}</Text>
-        </View>
-
-        {b.referencia.lecturaAnterior == null && (
-          <View style={s.avisoOffline}>
-            <Text style={s.avisoOfflineTxt}>
-              SIN LECTURA ANTERIOR EN TELÉFONO: El consumo se calculará y verificará contra el padrón de la oficina al recuperar la conexión (R4).
-            </Text>
+        <View style={[s.lineaProgreso, { backgroundColor: c.acento }]} />
+        <View style={s.pasoItem}>
+          <View style={[s.circuloPaso, s.circuloActivo]}>
+            <Text style={s.numPasoActivo}>2</Text>
           </View>
-        )}
+          <Text style={s.txtPasoActivo}>Revisión y foto</Text>
+        </View>
       </View>
 
+      {/* Tarjeta de Balance de Consumo */}
+      <View style={s.tarjetaBalance}>
+        <View style={s.cabeceraBalance}>
+          <View>
+            <Text style={s.subBalance}>RESUMEN DE CONSUMO</Text>
+            <Text style={s.codigo}>{b.codigo}</Text>
+          </View>
+          <View style={s.badgeEstado}>
+            <Text style={s.badgeEstadoTxt}>
+              {b.estadoMedidor === 'danado'
+                ? 'Dañado'
+                : b.estadoMedidor === 'inaccesible'
+                  ? 'Inaccesible'
+                  : 'Normal'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={s.cuerpoBalance}>
+          <Text style={ui.etiquetaSecundaria}>Lectura anterior</Text>
+          <Odometro valor={b.referencia.lecturaAnterior} />
+
+          <Text style={ui.etiquetaSecundaria}>Lectura actual capturada</Text>
+          <Odometro valor={calculo.lectura} />
+
+          <View style={s.grillaConsumo}>
+            <View style={[s.celdaConsumo, calculo.anomalo && s.celdaConsumoAnomalo]}>
+              <Text style={ui.etiquetaSecundaria}>Consumo del mes</Text>
+              <Text style={[s.valorGrande, calculo.anomalo && { color: c.error }]}>
+                {m3(calculo.consumo)}
+              </Text>
+            </View>
+            <View style={s.celdaConsumo}>
+              <Text style={ui.etiquetaSecundaria}>Promedio mensual</Text>
+              <Text style={s.valorGrande}>{m3(b.referencia.promedio)}</Text>
+            </View>
+          </View>
+
+          {b.referencia.lecturaAnterior == null && (
+            <View style={s.avisoOffline}>
+              <Text style={s.avisoOfflineTxt}>
+                Sin lectura anterior en este teléfono: el consumo se calculará y verificará cuando se recupere la conexión.
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Alerta de Consumo Anómalo (> 3x promedio) */}
       {calculo.anomalo && (
         <View style={[ui.panel, s.panelAnomalo]}>
-          <View style={ui.panelCabecera}>
-            <Text style={s.tituloAnomalo}>ALERTA DE CONSUMO ANÓMALO (R6)</Text>
-            <Text style={[ui.sello, { color: c.error, borderColor: c.error }]}>&gt; 3× PROMEDIO</Text>
+          <View style={s.cabeceraAnomalo}>
+            <View style={s.indicadorRojo} />
+            <Text style={s.tituloAnomalo}>Consumo anómalo detectado</Text>
           </View>
-          <Text style={{ color: c.text, lineHeight: 20 }}>
-            El consumo calculado ({m3(calculo.consumo)}) supera el triple del promedio mensual ({m3(b.referencia.promedio)}). Verifica físicamente las agujas y tambores del medidor antes de guardar. La fotografía de respaldo pasa a ser obligatoria.
+          <Text style={{ color: c.text, lineHeight: 20, fontSize: 14 }}>
+            El consumo calculado ({m3(calculo.consumo)}) supera el triple del promedio mensual ({m3(b.referencia.promedio)}). Por favor, verifica el medidor antes de continuar y adjunta la fotografía obligatoria.
           </Text>
           <Pressable
             onPress={() => actualizar({ revisionConfirmada: !b.revisionConfirmada })}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: b.revisionConfirmada }}
-            style={s.confirmar}>
-            <View style={[s.caja, b.revisionConfirmada && { backgroundColor: c.text }]}>
-              {b.revisionConfirmada && (
-                <Text style={{ color: '#FFFFFF', fontWeight: '800' }}>✓</Text>
-              )}
+            style={[s.confirmar, b.revisionConfirmada && s.confirmarActivo]}>
+            <View
+              style={[
+                s.caja,
+                b.revisionConfirmada && { backgroundColor: c.acento, borderColor: c.acento },
+              ]}>
+              {b.revisionConfirmada && <View style={s.marcaCheck} />}
             </View>
-            <Text style={{ flex: 1, color: c.text, fontWeight: '800' }}>
-              Confirmo que revisé físicamente el medidor de agua y el valor es correcto
+            <Text style={{ flex: 1, color: c.text, fontWeight: '700', fontSize: 14 }}>
+              Confirmo que revisé el medidor de agua
             </Text>
           </Pressable>
         </View>
@@ -147,24 +173,23 @@ export default function PasoRevision() {
       />
 
       {falta.length > 0 && (
-        <View style={[ui.panel, { borderColor: c.error, backgroundColor: '#FFF8F7' }]}>
-          <Text style={ui.etiqueta}>Requisitos pendientes para habilitar guardado</Text>
+        <View style={s.cajaFaltantes}>
+          <Text style={{ fontWeight: '700', color: c.error, fontSize: 13 }}>
+            Requisitos pendientes para guardar:
+          </Text>
           {falta.map((f) => (
-            <Text key={f} style={ui.error}>
-              • {f}
-            </Text>
+            <View key={f} style={s.filaFalta}>
+              <View style={s.puntoError} />
+              <Text style={ui.error}>{f}</Text>
+            </View>
           ))}
         </View>
       )}
-      {!!error && <Text style={ui.error}>▲ {error}</Text>}
-
-      <Text style={{ color: c.textSecondary, fontSize: 13, lineHeight: 19 }}>
-        Si no hay conexión en este punto de la ruta, la lectura quedará resguardada localmente como PENDIENTE DE VERIFICAR y se sincronizará automáticamente al recuperar señal.
-      </Text>
+      {!!error && <Text style={ui.error}>{error}</Text>}
 
       <Boton
-        titulo={b.modo === 'correccion' ? 'Guardar corrección de lectura' : 'Guardar lectura en cola'}
-        tipo="laton"
+        titulo={b.modo === 'correccion' ? 'Guardar corrección' : 'Guardar lectura'}
+        tipo="primario"
         onPress={guardar}
         deshabilitado={falta.length > 0}
       />
@@ -173,51 +198,183 @@ export default function PasoRevision() {
 }
 
 const s = StyleSheet.create({
-  estadoTag: {
-    fontFamily: Fonts.mono,
-    fontSize: 14,
-    fontWeight: '800',
-    color: c.text,
-    marginTop: 2,
+  barraPasos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: c.linea,
   },
-  separador: { height: 1, backgroundColor: c.linea, marginVertical: 4 },
-  fila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  valor: { fontFamily: Fonts.mono, fontWeight: '800', fontSize: 16, color: c.text },
-  avisoOffline: {
-    backgroundColor: '#FFFBEB',
-    borderLeftWidth: 4,
-    borderLeftColor: c.alerta,
-    padding: 10,
-    borderRadius: 4,
-    marginTop: 4,
+  pasoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  avisoOfflineTxt: { color: c.alerta, fontSize: 12, fontWeight: '700', lineHeight: 18 },
-  panelAnomalo: { borderColor: c.error, borderWidth: 2, backgroundColor: '#FDF1F0' },
-  tituloAnomalo: {
-    fontFamily: Fonts.mono,
-    color: c.error,
+  circuloPaso: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circuloCompletado: {
+    backgroundColor: c.ok,
+  },
+  circuloActivo: {
+    backgroundColor: c.acento,
+  },
+  numPasoActivo: {
+    color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 13,
   },
+  txtPasoActivo: {
+    color: c.text,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  txtPasoInactivo: {
+    color: c.textSecondary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  lineaProgreso: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 12,
+  },
+  tarjetaBalance: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: c.linea,
+    overflow: 'hidden',
+  },
+  cabeceraBalance: {
+    backgroundColor: '#0A2540',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  subBalance: {
+    color: '#93C5FD',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  codigo: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', marginTop: 2 },
+  badgeEstado: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeEstadoTxt: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  cuerpoBalance: {
+    padding: 18,
+    gap: 12,
+  },
+  grillaConsumo: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  celdaConsumo: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: c.linea,
+    gap: 4,
+  },
+  celdaConsumoAnomalo: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  valorGrande: { fontWeight: '800', fontSize: 18, color: c.text },
+  avisoOffline: {
+    backgroundColor: '#FFFBEB',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  avisoOfflineTxt: { color: c.alerta, fontSize: 13, lineHeight: 18 },
+  panelAnomalo: { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2', borderWidth: 1.5 },
+  cabeceraAnomalo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  indicadorRojo: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: c.error,
+  },
+  tituloAnomalo: { color: c.error, fontWeight: '800', fontSize: 16 },
   confirmar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     minHeight: 50,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: c.text,
+    borderColor: '#CBD5E1',
+  },
+  confirmarActivo: {
+    borderColor: c.acento,
+    backgroundColor: '#F0F6FC',
   },
   caja: {
-    width: 28,
-    height: 28,
+    width: 22,
+    height: 22,
     borderWidth: 2,
-    borderColor: c.text,
-    borderRadius: 4,
+    borderColor: '#64748B',
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  marcaCheck: {
+    width: 10,
+    height: 6,
+    borderLeftWidth: 2.2,
+    borderBottomWidth: 2.2,
+    borderColor: '#FFFFFF',
+    transform: [{ rotate: '-45deg' }, { translateY: -1 }],
+  },
+  cajaFaltantes: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 6,
+  },
+  filaFalta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  puntoError: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: c.error,
   },
 });

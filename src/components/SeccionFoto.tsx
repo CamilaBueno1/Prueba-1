@@ -26,7 +26,6 @@ export function SeccionFoto({ fotoNombre, obligatoria, idLocal, alCambiar }: Pro
     }
   };
 
-  // Android puede cerrar la app mientras se abre la cámara: aquí se recupera esa foto
   useEffect(() => {
     ImagePicker.getPendingResultAsync()
       .then((r) => {
@@ -55,49 +54,45 @@ export function SeccionFoto({ fotoNombre, obligatoria, idLocal, alCambiar }: Pro
   return (
     <View style={ui.panel}>
       <View style={ui.panelCabecera}>
-        <Text style={ui.etiqueta}>Evidencia fotográfica del medidor</Text>
+        <Text style={ui.etiqueta}>Fotografía del medidor</Text>
         <Text
           style={[
             ui.sello,
             {
               color: obligatoria ? c.error : c.textSecondary,
-              borderColor: obligatoria ? c.error : c.linea,
-              backgroundColor: obligatoria ? '#FDF1F0' : c.background,
+              backgroundColor: obligatoria ? '#FEE2E2' : '#F1F5F9',
             },
           ]}>
-          {obligatoria ? 'OBLIGATORIA' : 'OPCIONAL'}
+          {obligatoria ? 'Obligatoria' : 'Opcional'}
         </Text>
       </View>
 
       <Text style={s.texto}>
-        La fotografía respalda el estado físico de la unidad o el consumo registrado ante reclamos comerciales. Se conserva en el almacenamiento privado de este dispositivo.
+        Toma una fotografía clara del medidor como respaldo de la lectura registrada.
       </Text>
 
       {uri && (
-        <View style={s.marcoFoto}>
-          <Image source={{ uri }} style={s.foto} accessibilityLabel="Foto del medidor" />
-          <Text style={s.pieFoto}>Archivo local: {fotoNombre}</Text>
-        </View>
+        <Image source={{ uri }} style={s.foto} accessibilityLabel="Foto del medidor" />
       )}
 
       <Boton
-        titulo={uri ? 'Volver a capturar fotografía' : 'Capturar fotografía con cámara'}
-        tipo={uri ? 'borde' : 'laton'}
+        titulo={uri ? 'Tomar otra fotografía' : 'Abrir cámara y tomar foto'}
+        tipo={uri ? 'borde' : 'primario'}
         onPress={tomar}
       />
-      {!!fallo && <Text style={ui.error}>▲ {fallo}</Text>}
+      {!!fallo && <Text style={ui.error}>{fallo}</Text>}
 
       {mostrarDenegado && (
         <View style={s.aviso}>
-          <Text style={s.avisoTitulo}>PERMISO DE CÁMARA DENEGADO</Text>
+          <Text style={s.avisoTitulo}>Permiso de cámara desactivado</Text>
           <Text style={s.texto}>
-            Necesitamos acceso a la cámara para fotografiar el medidor y respaldar la inspección en campo ante posibles reclamos.{' '}
+            Necesitamos acceso a la cámara para fotografiar el medidor como respaldo.{' '}
             {obligatoria
-              ? 'En este caso la foto es obligatoria (por medidor dañado o consumo anómalo), por lo que no podrás guardar la lectura hasta conceder el permiso.'
-              : 'En este caso la foto es opcional: puedes continuar y guardar la lectura sin ella.'}
+              ? 'En este caso la foto es obligatoria, por lo que debes habilitar el permiso para poder guardar.'
+              : 'En este caso la foto es opcional, así que puedes guardar la lectura sin ella.'}
           </Text>
           <Boton
-            titulo="Abrir ajustes del teléfono"
+            titulo="Abrir configuración del teléfono"
             tipo="borde"
             onPress={() => Linking.openSettings()}
           />
@@ -109,23 +104,19 @@ export function SeccionFoto({ fotoNombre, obligatoria, idLocal, alCambiar }: Pro
 
 const s = StyleSheet.create({
   texto: { color: c.textSecondary, fontSize: 13, lineHeight: 19 },
-  marcoFoto: { gap: 4 },
   foto: {
     width: '100%',
-    height: 210,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: c.linea,
-    backgroundColor: c.linea,
+    height: 200,
+    borderRadius: 10,
+    backgroundColor: '#E2E8F0',
   },
-  pieFoto: { fontSize: 11, color: c.textSecondary },
   aviso: {
-    borderWidth: 1.5,
-    borderColor: c.alerta,
-    borderRadius: 6,
-    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    padding: 14,
     gap: 8,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: '#FFFBEB',
   },
-  avisoTitulo: { color: c.alerta, fontWeight: '800', fontSize: 13 },
+  avisoTitulo: { color: c.alerta, fontWeight: '700', fontSize: 14 },
 });
